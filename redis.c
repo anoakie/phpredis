@@ -1568,6 +1568,35 @@ PHP_METHOD(Redis, type)
 }
 /* }}} */
 
+PHP_METHOD(Redis, appendx)
+{
+	zval *object;
+	RedisSock *redis_sock;
+	char *cmd;
+	int cmd_len, key_len, val_len, key_free;
+	char *key, *val;
+
+	if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Oss",
+                                     &object, redis_ce,
+                                     &key, &key_len, &val, &val_len) == FAILURE) {
+		RETURN_NULL();
+	}
+
+	if (redis_sock_get(object, &redis_sock TSRMLS_CC, 0) < 0) {
+		RETURN_FALSE;
+	}
+
+	key_free = redis_key_prefix(redis_sock, &key, &key_len TSRMLS_CC);
+	cmd_len = redis_cmd_format_static(&cmd, "APPENDX", "ss", key, key_len, val, val_len);
+	if(key_free) efree(key);
+
+	REDIS_PROCESS_REQUEST(redis_sock, cmd, cmd_len);
+	IF_ATOMIC() {
+		redis_long_response(INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, NULL, NULL);
+	}
+	REDIS_PROCESS_RESPONSE(redis_long_response);
+}
+
 PHP_METHOD(Redis, append)
 {
 	zval *object;
@@ -4637,6 +4666,50 @@ PHP_METHOD(Redis, hExists)
 	REDIS_PROCESS_RESPONSE(redis_1_response);
 
 }
+
+PHPAPI void
+generic_happend(INTERNAL_FUNCTION_PARAMETERS, char *kw, void (*fun)(INTERNAL_FUNCTION_PARAMETERS, RedisSock *, zval *, void *)) {
+    zval *object;
+    RedisSock *redis_sock;
+    char *key = NULL, *cmd, *member, *val;
+    int key_len, member_len, cmd_len, val_len;
+    int val_free, key_free = 0;
+    zval *z_value;
+
+    if (zend_parse_method_parameters(ZEND_NUM_ARGS() TSRMLS_CC, getThis(), "Ossz",
+                                     &object, redis_ce,
+                                     &key, &key_len, &member, &member_len, &z_value) == FAILURE) {
+        RETURN_FALSE;
+    }
+
+    if (redis_sock_get(object, &redis_sock TSRMLS_CC, 0) < 0) {
+        RETURN_FALSE;
+    }
+
+    val_free = redis_serialize(redis_sock, z_value, &val, &val_len TSRMLS_CC);
+	key_free = redis_key_prefix(redis_sock, &key, &key_len TSRMLS_CC);
+    cmd_len = redis_cmd_format_static(&cmd, kw, "sss", key, key_len, member, member_len, val, val_len);
+    if(val_free) efree(val);
+    if(key_free) efree(key);
+
+	REDIS_PROCESS_REQUEST(redis_sock, cmd, cmd_len);
+	IF_ATOMIC() {
+	  fun(INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, NULL, NULL);
+	}
+	REDIS_PROCESS_RESPONSE(fun);
+}
+/* hAppend */
+PHP_METHOD(Redis, hAppend)
+{
+	generic_happend(INTERNAL_FUNCTION_PARAM_PASSTHRU, "HAPPEND", redis_long_response);
+}
+/* }}} */
+/* hAppendx */
+PHP_METHOD(Redis, hAppendX)
+{
+	generic_happend(INTERNAL_FUNCTION_PARAM_PASSTHRU, "HAPPENDX", redis_long_response);
+}
+/* }}} */
 
 PHPAPI RedisSock*
 generic_hash_command_1(INTERNAL_FUNCTION_PARAMETERS, char *keyword, int keyword_len) {

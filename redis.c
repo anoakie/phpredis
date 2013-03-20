@@ -198,6 +198,11 @@ static zend_function_entry redis_functions[] = {
      PHP_ME(Redis, hMset, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, hMget, NULL, ZEND_ACC_PUBLIC)
 
+	 /* 1.8 */
+	 PHP_ME(Redis, appendx, NULL, ZEND_ACC_PUBLIC)
+	 PHP_ME(Redis, hAppend, NULL, ZEND_ACC_PUBLIC)
+	 PHP_ME(Redis, hAppendX, NULL, ZEND_ACC_PUBLIC)
+
      PHP_ME(Redis, multi, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, discard, NULL, ZEND_ACC_PUBLIC)
      PHP_ME(Redis, exec, NULL, ZEND_ACC_PUBLIC)
@@ -4661,7 +4666,7 @@ PHP_METHOD(Redis, hAppend)
 	generic_happend(INTERNAL_FUNCTION_PARAM_PASSTHRU, "HAPPEND", redis_long_response);
 }
 /* }}} */
-/* hAppendx */
+/* hAppendX */
 PHP_METHOD(Redis, hAppendX)
 {
 	generic_happend(INTERNAL_FUNCTION_PARAM_PASSTHRU, "HAPPENDX", redis_long_response);
